@@ -23,9 +23,9 @@ class BirdView(APIView):
 class BirdsetView(APIView):
     def get(self, request, bird_id):
         bird = get_object_or_404(Bird, id=bird_id)
-        birds = Birdset.objects.filter(bird=bird)
-        serializer = BirdsetSerializer(birds, many=True)
-        return Response(serializer.data)
+        birdset = Birdset.objects.filter(bird=bird)
+        serializer = BirdsetSerializer(birdset, many=True)
+        return Response(serializer.data[0])
 
 class BirdPredictionView(APIView):
     def post(self, request):
@@ -54,6 +54,8 @@ class BirdPredictionView(APIView):
             prediction['image'] = "/media/images/15713882904f322146de8b1.jpg.webp"
 
         prediction['wiki-url'] = Bird.objects.get(name=prediction['predicted_class']).url
+
+        prediction['has_bird'] = True
 
         print(prediction)
 

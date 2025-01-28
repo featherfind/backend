@@ -24,7 +24,6 @@ urlpatterns = [
     path('auth/', include('authentication.urls')),
     path('birds/', include('birds.urls')),
     path('callback/', include('callback.urls')),
-    path('chat/', include('chat.urls')),
     path('locations/', include('locations.urls')),
 ]
 

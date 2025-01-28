@@ -26,8 +26,8 @@ class BirdLocationListView(APIView):
 class BirdLocationView(APIView):
     def get(self, request, bird_id):
         bird = get_object_or_404(Bird, id=bird_id)
-        bird_location = get_object_or_404(BirdLocation, bird=bird)
-        serializer = BirdLocationSerializer(bird_location)
+        bird_locations = BirdLocation.objects.filter(bird=bird)
+        serializer = BirdLocationSerializer(bird_locations, many=True)
         return Response(serializer.data)
         
     def post(self, request, bird_id):

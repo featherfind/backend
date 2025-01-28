@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     "locations",
     'corsheaders', 
     'callback',
-    'chat',
 ]
 
 MIDDLEWARE = [

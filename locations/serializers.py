@@ -13,7 +13,8 @@ class LocationSerializer(serializers.ModelSerializer):
 class BirdLocationSerializer(serializers.ModelSerializer):
     location = LocationSerializer(read_only=True)
     bird = BirdSerializer(read_only=True)
-    
+    spotted_time = serializers.DateTimeField()
+
     class Meta:
         model = BirdLocation
         fields = ['id', 'location', 'bird', 'spotted_time']
