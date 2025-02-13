@@ -7,6 +7,8 @@ from .serializers import BirdSerializer, BirdsetSerializer
 import requests
 from django.db import connection
 import random
+from pydub import AudioSegment
+import io
 
 class BirdListView(APIView):
     def get(self, request):
@@ -33,7 +35,10 @@ class BirdPredictionView(APIView):
         
         if not audio_file:
             return Response({"error": "No audio file provided"}, status=status.HTTP_400_BAD_REQUEST)
-
+        audio = AudioSegment.from_file(io.BytesIO(audio_file.read()))
+        mp3buffer = io.BytesIO()
+        audio.export(mp3buffer,format='mp3')
+        audio_file = mp3buffer.getvalue()
         response = requests.post(
             'https://mryeti-featherfindapi.hf.space/predict/',
             files={'audio_file': audio_file}
@@ -43,7 +48,7 @@ class BirdPredictionView(APIView):
             return Response({"error": "Failed to get prediction from external API"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         prediction = response.json()
-
+        print(prediction)
         prediction['bird_id'] = Bird.objects.get(name=prediction['predicted_class']).id
         
         prediction['confidence'] = random.uniform(0.6, 1) * 100
