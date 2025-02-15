@@ -9,6 +9,8 @@ from django.db import connection
 import random
 from pydub import AudioSegment
 import io
+import platform
+
 
 class BirdListView(APIView):
     def get(self, request):
@@ -35,33 +37,66 @@ class BirdPredictionView(APIView):
         
         if not audio_file:
             return Response({"error": "No audio file provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
         audio = AudioSegment.from_file(io.BytesIO(audio_file.read()))
         mp3buffer = io.BytesIO()
-        audio.export(mp3buffer,format='mp3')
+        audio.export(mp3buffer, format='mp3')
         audio_file = mp3buffer.getvalue()
+
+        bird_sound = self.get_bird_sound_prediction(audio_file)
+        print(bird_sound)
+        
+        prediction = self.get_bird_prediction(audio_file)
+        
+        prediction['has_bird'] = True if bird_sound['has_bird'] else False
+
+        return Response(prediction, status=status.HTTP_200_OK)
+
+    def get_bird_sound_prediction(self, audio_file):
+        if platform.system() == 'Darwin':
+            import coremltools
+            model = coremltools.models.MLModel('BirdML.mlmodel')
+            output = model.predict({'audio_file': audio_file})
+            return {'has_bird': output['target'] == 1}
+        else:
+            response = requests.post(
+                'http://localhost:8765/predict/',
+                files={'audio_file': audio_file}
+            )
+            if response.status_code != 200:
+                raise Exception("Failed to get prediction from external API")
+            return response.json()
+
+    def get_bird_prediction(self, audio_file):
         response = requests.post(
             'https://mryeti-featherfindapi.hf.space/predict/',
             files={'audio_file': audio_file}
         )
-
         if response.status_code != 200:
-            return Response({"error": "Failed to get prediction from external API"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise Exception("Failed to get prediction from external API")
 
         prediction = response.json()
-        print(prediction)
-        prediction['bird_id'] = Bird.objects.get(name=prediction['predicted_class']).id
-        
-        prediction['confidence'] = random.uniform(0.6, 1) * 100
-
-        try:
-            prediction['image'] = Birdset.objects.filter(bird_id=prediction['bird_id']).first().image.url
-        except:
-            prediction['image'] = "/media/images/15713882904f322146de8b1.jpg.webp"
-
-        prediction['wiki-url'] = Bird.objects.get(name=prediction['predicted_class']).url
-
-        prediction['has_bird'] = True
 
         print(prediction)
+        bird = Bird.objects.get(name=prediction['predicted_class'])
+        prediction['bird_id'] = bird.id
+        prediction['image'] = self.get_bird_image_url(bird.id)
+        prediction['wiki-url'] = bird.url
 
-        return Response(prediction, status=status.HTTP_200_OK)
+        return prediction
+
+    def get_bird_image_url(self, bird_id):
+        birdset = Birdset.objects.filter(bird_id=bird_id).first()
+        if birdset and birdset.image:
+            return birdset.image.url
+        return "/media/images/15713882904f322146de8b1.jpg.webp"
+
+    def get_empty_prediction(self):
+        return {
+            'has_bird': False,
+            'predicted_class': "",
+            'confidence': 0,
+            'bird_id': 0,
+            'image': "",
+            'wiki-url': ""
+        }
